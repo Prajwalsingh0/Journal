@@ -1,0 +1,155 @@
+import { db } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const filter = searchParams.get('filter') || 'all';
+    const topic = searchParams.get('topic') || '';
+    const mood = searchParams.get('mood') || '';
+    const authorId = searchParams.get('authorId') || '';
+
+    const where: any = {
+      isDraft: false,
+      visibility: 'public',
+      scheduledAt: null,
+    };
+
+    if (filter === 'following') {
+      where.author = { recvFollows: { some: { followerId: authorId || '' } } };
+    } else if (topic) {
+      where.tags = { contains: topic };
+    }
+    if (mood) {
+      where.mood = mood;
+    }
+    if (authorId) {
+      where.authorId = authorId;
+    }
+
+    const entries = await db.journalEntry.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: {
+        author: {
+          select: { id: true, name: true, displayName: true, pronouns: true, avatarUrl: true, isAnonymous: true },
+        },
+        reactions: { select: { type: true } },
+        _count: { select: { comments: true } },
+      },
+    });
+
+    const formatted = entries.map((e) => {
+      const reactionCounts: Record<string, number> = {};
+      e.reactions.forEach((r) => {
+        reactionCounts[r.type] = (reactionCounts[r.type] || 0) + 1;
+      });
+      return {
+        id: e.id,
+        title: e.title,
+        content: e.content,
+        htmlContent: e.htmlContent,
+        mood: e.mood,
+        tags: JSON.parse(e.tags),
+        contentWarnings: JSON.parse(e.contentWarnings),
+        musicMood: e.musicMood,
+        fontStyle: e.fontStyle,
+        visibility: e.visibility,
+        isAnonymous: e.isAnonymous,
+        isDraft: e.isDraft,
+        scheduledAt: e.scheduledAt,
+        createdAt: e.createdAt.toISOString(),
+        author: e.isAnonymous
+          ? { id: 'anon', name: 'Anonymous', displayName: 'Anonymous Bloomer', pronouns: 'prefer not to say', avatarUrl: null, isAnonymous: true }
+          : e.author,
+        reactions: Object.entries(reactionCounts).map(([type, count]) => ({ type, _count: count })),
+        commentCount: e._count.comments,
+      };
+    });
+
+    return NextResponse.json(formatted);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to fetch entries' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { title, content, htmlContent, mood, tags, contentWarnings, musicMood, fontStyle, visibility, isAnonymous, isDraft, scheduledAt, authorId, collectionId } = body;
+
+    if (!authorId) {
+      return NextResponse.json({ error: 'Author ID is required' }, { status: 400 });
+    }
+
+    const entry = await db.journalEntry.create({
+      data: {
+        title: title || 'Untitled',
+        content: content || '',
+        htmlContent: htmlContent || content || '',
+        mood: mood || 'neutral',
+        tags: JSON.stringify(tags || []),
+        contentWarnings: JSON.stringify(contentWarnings || []),
+        musicMood: musicMood || null,
+        fontStyle: fontStyle || 'sans-serif',
+        visibility: visibility || 'public',
+        isAnonymous: isAnonymous || false,
+        isDraft: isDraft || false,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        collectionId: collectionId || null,
+        authorId,
+      },
+      include: {
+        author: {
+          select: { id: true, name: true, displayName: true, pronouns: true, avatarUrl: true, isAnonymous: true },
+        },
+        reactions: { select: { type: true } },
+        _count: { select: { comments: true } },
+      },
+    });
+
+    const reactionCounts: Record<string, number> = {};
+    entry.reactions.forEach((r) => {
+      reactionCounts[r.type] = (reactionCounts[r.type] || 0) + 1;
+    });
+
+    return NextResponse.json({
+      id: entry.id,
+      title: entry.title,
+      content: entry.content,
+      htmlContent: entry.htmlContent,
+      mood: entry.mood,
+      tags: JSON.parse(entry.tags),
+      contentWarnings: JSON.parse(entry.contentWarnings),
+      musicMood: entry.musicMood,
+      fontStyle: entry.fontStyle,
+      visibility: entry.visibility,
+      isAnonymous: entry.isAnonymous,
+      isDraft: entry.isDraft,
+      scheduledAt: entry.scheduledAt,
+      createdAt: entry.createdAt.toISOString(),
+      author: entry.isAnonymous
+        ? { id: 'anon', name: 'Anonymous', displayName: 'Anonymous Bloomer', pronouns: 'prefer not to say', avatarUrl: null, isAnonymous: true }
+        : entry.author,
+      reactions: Object.entries(reactionCounts).map(([type, count]) => ({ type, _count: count })),
+      commentCount: entry._count.comments,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to create entry' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Entry ID is required' }, { status: 400 });
+    }
+    await db.journalEntry.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to delete entry' }, { status: 500 });
+  }
+}

@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String?
+  name          String?
+  displayName   String?
+  pronouns      String    @default("she/her")
+  customPronoun String?
+  bio           String    @default("")
+  avatarUrl     String?
+  coverUrl      String?
+  theme         String    @default("pastel")
+  interests     String    @default("[]")
+  isAnonymous   Boolean   @default(false)
+  showPronouns  Boolean   @default(true)
+  isUnder18     Boolean   @default(false)
+  isBanned      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  entries     JournalEntry[]
+  comments    Comment[]
+  reactions   Reaction[]
+  sentFollows Follow[]       @relation("SentFollows")
+  recvFollows Follow[]       @relation("RecvFollows")
+  sentBlocks  Block[]        @relation("SentBlocks")
+  recvBlocks  Block[]        @relation("RecvBlocks")
+  reports     Report[]
+  collections Collection[]
+}
+
+model JournalEntry {
+  id              String   @id @default(cuid())
+  title           String
+  content         String   @default("")
+  htmlContent     String   @default("")
+  mood            String   @default("neutral")
+  tags            String   @default("[]")
+  contentWarnings String   @default("[]")
+  musicMood       String?
+  fontStyle       String   @default("sans-serif")
+  visibility      String   @default("public")
+  isAnonymous     Boolean  @default(false)
+  isDraft         Boolean  @default(false)
+  scheduledAt     DateTime?
+  collectionId    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  authorId        String
+
+  author    User      @relation(fields: [authorId], references: [id])
+  comments  Comment[]
+  reactions Reaction[]
+  collection Collection? @relation(fields: [collectionId], references: [id])
+  reports   Report[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  entryId   String
+
+  author User         @relation(fields: [authorId], references: [id])
+  entry  JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  type      String
+  createdAt DateTime @default(now())
+  authorId  String
+  entryId   String
+
+  author User         @relation(fields: [authorId], references: [id])
+  entry  JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, entryId, type])
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  followerId String
+  followingId String
+
+  follower  User @relation("SentFollows", fields: [followerId], references: [id])
+  following User @relation("RecvFollows", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  blockerId String
+  blockedId String
+
+  blocker User @relation("SentBlocks", fields: [blockerId], references: [id])
+  blocked User @relation("RecvBlocks", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reason      String
+  description String   @default("")
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  reporterId  String
+  targetEntryId String?
+
+  reporter    User          @relation(fields: [reporterId], references: [id])
+  targetEntry JournalEntry? @relation(fields: [targetEntryId], references: [id])
+}
+
+model Collection {
+  id        String   @id @default(cuid())
+  name      String
+  emoji     String   @default("📝")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+
+  user    User           @relation(fields: [userId], references: [id])
+  entries JournalEntry[]
+}
