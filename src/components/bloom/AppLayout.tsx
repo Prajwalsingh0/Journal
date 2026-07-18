@@ -38,7 +38,6 @@ export default function AppLayout() {
       case 'explore': return <ExploreView />;
       case 'entry': return <EntryDetailView />;
       case 'settings': return <SettingsView />;
-      case 'crisis': return <CrisisView />;
       default: return <FeedView />;
     }
   };
@@ -76,10 +75,6 @@ export default function AppLayout() {
 
         {/* Desktop sidebar bottom */}
         <div className="p-3 border-t border-border space-y-1">
-          <button onClick={() => setCurrentView('crisis')} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-all">
-            <Heart className="w-5 h-5" />
-            Crisis Resources
-          </button>
           <button onClick={() => setCurrentView('settings')} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-all">
             <Settings className="w-5 h-5" />
             Settings

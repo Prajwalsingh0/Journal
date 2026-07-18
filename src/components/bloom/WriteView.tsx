@@ -226,28 +226,6 @@ export default function WriteView() {
         )}
       </Card>
 
-      {/* Content Warnings */}
-      <Card className="p-4 mb-4 bloom-card border-0">
-        <button className="flex items-center justify-between w-full" onClick={() => setShowWarnings(!showWarnings)}>
-          <span className="text-sm font-medium">Content Warnings</span>
-          {showWarnings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-        {showWarnings && (
-          <div className="flex flex-wrap gap-1.5 mt-3 animate-bloom-in">
-            {CONTENT_WARNINGS.map(w => (
-              <Badge
-                key={w}
-                variant={draftWarnings.includes(w) ? 'destructive' : 'outline'}
-                className="cursor-pointer rounded-full text-xs"
-                onClick={() => toggleWarning(w)}
-              >
-                {draftWarnings.includes(w) && '⚠️ '}{w}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </Card>
-
       {/* Advanced Options */}
       <Card className="p-4 mb-4 bloom-card border-0">
         <button className="flex items-center justify-between w-full" onClick={() => setShowAdvanced(!showAdvanced)}>
