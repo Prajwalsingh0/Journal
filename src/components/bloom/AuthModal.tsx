@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Eye, EyeOff } from 'lucide-react';
 
 const PRONOUN_OPTIONS = ['she/her', 'they/them', 'he/him', 'prefer not to say'];
 
@@ -24,6 +25,8 @@ export default function AuthModal() {
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [name, setName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [pronouns, setPronouns] = useState('she/her');
@@ -41,10 +44,12 @@ export default function AuthModal() {
     setEmail(''); setPassword(''); setName(''); setDisplayName('');
     setPronouns('she/her'); setCustomPronoun(''); setIsUnder18(null);
     setAgeConfirmed(false); setInterests([]); setSelectedTheme('pastel');
+    setShowPassword(false); setShowLoginPassword(false);
   };
 
   const handleSignup = async () => {
-    if (!email || !password || !name) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password || !name) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -63,7 +68,7 @@ export default function AuthModal() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email, password, name, displayName: displayName || name,
+          email: cleanEmail, password, name, displayName: displayName || name,
           pronouns: pronouns === 'custom' ? customPronoun : pronouns,
           customPronoun: pronouns === 'custom' ? customPronoun : null,
           isUnder18,
@@ -86,7 +91,8 @@ export default function AuthModal() {
   };
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
       toast.error('Please enter your email and password');
       return;
     }
@@ -95,7 +101,7 @@ export default function AuthModal() {
       const res = await fetch('/api/auth', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: cleanEmail, password }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -158,99 +164,100 @@ export default function AuthModal() {
         <AnimatePresence mode="wait">
           {authModalMode === 'signup' ? (
             <motion.div key="signup" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="px-6 pb-6">
-              {step === 1 && (
-                <div className="space-y-4 animate-bloom-in">
-                  {/* Age Gate */}
-                  <div className="bg-accent/50 rounded-xl p-4 text-center">
-                    <p className="text-sm font-medium mb-3">How old are you?</p>
-                    <div className="flex gap-2 justify-center">
-                      <Button variant={isUnder18 === true ? 'default' : 'outline'} size="sm" onClick={() => setIsUnder18(true)} className="rounded-full">
-                        Under 18
-                      </Button>
-                      <Button variant={isUnder18 === false ? 'default' : 'outline'} size="sm" onClick={() => setIsUnder18(false)} className="rounded-full">
-                        18 or older
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="name">Display Name *</Label>
-                      <Input id="name" placeholder="What should we call you?" value={name} onChange={e => setName(e.target.value)} className="mt-1 rounded-xl" />
-                    </div>
-                    <div>
-                      <Label htmlFor="displayName">Username (optional)</Label>
-                      <Input id="displayName" placeholder="@yourname" value={displayName} onChange={e => setDisplayName(e.target.value)} className="mt-1 rounded-xl" />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email *</Label>
-                      <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 rounded-xl" />
-                    </div>
-                    <div>
-                      <Label htmlFor="password">Password *</Label>
-                      <Input id="password" type="password" placeholder="Create a password" value={password} onChange={e => setPassword(e.target.value)} className="mt-1 rounded-xl" />
-                    </div>
-                  </div>
-                  <Button className="w-full bloom-btn rounded-xl" onClick={() => setStep(2)} disabled={!name || !email || !password || isUnder18 === null}>
-                    Continue ✨
-                  </Button>
-                </div>
-              )}
-
-              {step === 2 && (
-                <div className="space-y-4 animate-bloom-in">
-                  <div>
-                    <Label className="mb-2 block">Your Pronouns</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {PRONOUN_OPTIONS.map(p => (
-                        <Badge key={p} variant={pronouns === p ? 'default' : 'outline'} className="cursor-pointer px-3 py-1.5 text-sm rounded-full" onClick={() => setPronouns(p)}>
-                          {p}
-                        </Badge>
-                      ))}
-                      <Badge variant={pronouns === 'custom' ? 'default' : 'outline'} className="cursor-pointer px-3 py-1.5 text-sm rounded-full" onClick={() => setPronouns('custom')}>
-                        Custom
-                      </Badge>
-                    </div>
-                    {pronouns === 'custom' && (
-                      <Input placeholder="Your pronouns" value={customPronoun} onChange={e => setCustomPronoun(e.target.value)} className="mt-2 rounded-xl" />
-                    )}
-                  </div>
-                  <div>
-                    <Label className="mb-2 block">Pick your interests ({interests.length}/8)</Label>
-                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                      {INTEREST_OPTIONS.map(i => (
-                        <Badge key={i} variant={interests.includes(i) ? 'default' : 'outline'} className="cursor-pointer px-2.5 py-1 text-xs rounded-full" onClick={() => toggleInterest(i)}>
-                          {i}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="mb-2 block">Choose your theme</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {themes.map(t => (
-                        <div key={t.id} className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedTheme === t.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`} onClick={() => setSelectedTheme(t.id)}>
-                          <div className="flex gap-1 mb-1.5">
-                            {t.colors.map((c, i) => <div key={i} className="w-5 h-5 rounded-full" style={{ background: c }} />)}
-                          </div>
-                          <p className="text-xs font-medium">{t.label}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <label className="flex items-start gap-2.5 p-3 bg-accent/30 rounded-xl cursor-pointer">
-                    <input type="checkbox" checked={ageConfirmed} onChange={e => setAgeConfirmed(e.target.checked)} className="mt-0.5 rounded" />
-                    <span className="text-xs text-muted-foreground leading-relaxed">
-                      I confirm I am <strong>15 years or older</strong>. I agree to Bloom&apos;s Community Guidelines and understand this is a supportive, safe space for everyone.
-                    </span>
-                  </label>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setStep(1)}>Back</Button>
-                    <Button className="flex-1 bloom-btn rounded-xl" onClick={handleSignup} disabled={!ageConfirmed || loading}>
-                      {loading ? 'Creating...' : 'Join Bloom 🌸'}
+              <div className={step === 1 ? "space-y-4 animate-bloom-in" : "hidden"}>
+                {/* Age Gate */}
+                <div className="bg-accent/50 rounded-xl p-4 text-center">
+                  <p className="text-sm font-medium mb-3">How old are you?</p>
+                  <div className="flex gap-2 justify-center">
+                    <Button variant={isUnder18 === true ? 'default' : 'outline'} size="sm" onClick={() => setIsUnder18(true)} className="rounded-full" type="button">
+                      Under 18
+                    </Button>
+                    <Button variant={isUnder18 === false ? 'default' : 'outline'} size="sm" onClick={() => setIsUnder18(false)} className="rounded-full" type="button">
+                      18 or older
                     </Button>
                   </div>
                 </div>
-              )}
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="name">Display Name *</Label>
+                    <Input id="name" placeholder="What should we call you?" value={name} onChange={e => setName(e.target.value)} className="mt-1 rounded-xl" />
+                  </div>
+                  <div>
+                    <Label htmlFor="displayName">Username (optional)</Label>
+                    <Input id="displayName" placeholder="@yourname" value={displayName} onChange={e => setDisplayName(e.target.value)} className="mt-1 rounded-xl" />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email *</Label>
+                    <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} className="mt-1 rounded-xl" />
+                  </div>
+                  <div>
+                    <Label htmlFor="password">Password *</Label>
+                    <div className="relative mt-1">
+                      <Input id="password" type={showPassword ? "text" : "password"} placeholder="Create a password" value={password} onChange={e => setPassword(e.target.value)} className="pr-10 rounded-xl" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <Button className="w-full bloom-btn rounded-xl" onClick={() => setStep(2)} disabled={!name || !email || !password || isUnder18 === null} type="button">
+                  Continue ✨
+                </Button>
+              </div>
+
+              <div className={step === 2 ? "space-y-4 animate-bloom-in" : "hidden"}>
+                <div>
+                  <Label className="mb-2 block">Your Pronouns</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {PRONOUN_OPTIONS.map(p => (
+                      <Badge key={p} variant={pronouns === p ? 'default' : 'outline'} className="cursor-pointer px-3 py-1.5 text-sm rounded-full" onClick={() => setPronouns(p)}>
+                        {p}
+                      </Badge>
+                    ))}
+                    <Badge variant={pronouns === 'custom' ? 'default' : 'outline'} className="cursor-pointer px-3 py-1.5 text-sm rounded-full" onClick={() => setPronouns('custom')}>
+                      Custom
+                    </Badge>
+                  </div>
+                  {pronouns === 'custom' && (
+                    <Input placeholder="Your pronouns" value={customPronoun} onChange={e => setCustomPronoun(e.target.value)} className="mt-2 rounded-xl" />
+                  )}
+                </div>
+                <div>
+                  <Label className="mb-2 block">Pick your interests ({interests.length}/8)</Label>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                    {INTEREST_OPTIONS.map(i => (
+                      <Badge key={i} variant={interests.includes(i) ? 'default' : 'outline'} className="cursor-pointer px-2.5 py-1 text-xs rounded-full" onClick={() => toggleInterest(i)}>
+                        {i}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="mb-2 block">Choose your theme</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {themes.map(t => (
+                      <div key={t.id} className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedTheme === t.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`} onClick={() => setSelectedTheme(t.id)}>
+                        <div className="flex gap-1 mb-1.5">
+                          {t.colors.map((c, i) => <div key={i} className="w-5 h-5 rounded-full" style={{ background: c }} />)}
+                        </div>
+                        <p className="text-xs font-medium">{t.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <label className="flex items-start gap-2.5 p-3 bg-accent/30 rounded-xl cursor-pointer">
+                  <input type="checkbox" checked={ageConfirmed} onChange={e => setAgeConfirmed(e.target.checked)} className="mt-0.5 rounded" />
+                  <span className="text-xs text-muted-foreground leading-relaxed">
+                    I confirm I am <strong>15 years or older</strong>. I agree to Bloom&apos;s Community Guidelines and understand this is a supportive, safe space for everyone.
+                  </span>
+                </label>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setStep(1)} type="button">Back</Button>
+                  <Button className="flex-1 bloom-btn rounded-xl" onClick={handleSignup} disabled={!ageConfirmed || loading} type="button">
+                    {loading ? 'Creating...' : 'Join Bloom 🌸'}
+                  </Button>
+                </div>
+              </div>
             </motion.div>
           ) : (
             <motion.div key="login" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="px-6 pb-6">
@@ -261,9 +268,14 @@ export default function AuthModal() {
                 </div>
                 <div>
                   <Label htmlFor="login-password">Password</Label>
-                  <Input id="login-password" type="password" placeholder="Your password" value={password} onChange={e => setPassword(e.target.value)} className="mt-1 rounded-xl" />
+                  <div className="relative mt-1">
+                    <Input id="login-password" type={showLoginPassword ? "text" : "password"} placeholder="Your password" value={password} onChange={e => setPassword(e.target.value)} className="pr-10 rounded-xl" />
+                    <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
-                <Button className="w-full bloom-btn rounded-xl" onClick={handleLogin} disabled={loading}>
+                <Button className="w-full bloom-btn rounded-xl" onClick={handleLogin} disabled={loading} type="button">
                   {loading ? 'Signing in...' : 'Sign In 💜'}
                 </Button>
                 <p className="text-center text-xs text-muted-foreground">

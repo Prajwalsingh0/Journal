@@ -30,8 +30,10 @@ export default function FeedView() {
   const fetchEntries = useCallback(async () => {
     try {
       const params = new URLSearchParams();
-      if (feedFilter === 'following' && currentUser) params.set('filter', 'following');
-      params.set('authorId', currentUser?.id || '');
+      if (feedFilter === 'following' && currentUser) {
+        params.set('filter', 'following');
+        params.set('authorId', currentUser.id);
+      }
       if (activeTopic) params.set('topic', activeTopic);
       const res = await fetch(`/api/entries?${params}`);
       if (res.ok) {
@@ -44,6 +46,26 @@ export default function FeedView() {
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
+
+  const handleDragScroll = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const startX = e.pageX - el.offsetLeft;
+    const scrollLeft = el.scrollLeft;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const x = moveEvent.pageX - el.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      el.scrollLeft = scrollLeft - walk;
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   const filteredEntries = feedEntries.filter(e => {
     if (!search) return true;
@@ -88,7 +110,10 @@ export default function FeedView() {
       {/* Topic filter bar */}
       {showTopics && (
         <div className="mb-4 p-3 bg-card rounded-xl border border-border animate-bloom-in">
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 mb-2">
+          <div 
+            className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 mb-2 select-none cursor-grab active:cursor-grabbing"
+            onMouseDown={handleDragScroll}
+          >
             <Badge variant={activeTopic === '' ? 'default' : 'outline'} className="cursor-pointer whitespace-nowrap rounded-full" onClick={() => setActiveTopic('')}>
               All
             </Badge>
@@ -102,7 +127,10 @@ export default function FeedView() {
       )}
 
       {/* Trending tags */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-4 pb-1">
+      <div 
+        className="flex gap-2 overflow-x-auto scrollbar-hide mb-4 pb-1 select-none cursor-grab active:cursor-grabbing"
+        onMouseDown={handleDragScroll}
+      >
         {VIBE_TAGS.slice(0, 8).map(t => (
           <Badge key={t.id} variant="secondary" className="cursor-pointer whitespace-nowrap rounded-full text-xs hover:bg-primary hover:text-primary-foreground transition-colors" onClick={() => setSearch(t.label.replace('#', ''))}>
             {t.label}
@@ -134,7 +162,11 @@ export default function FeedView() {
             variant={feedFilter === f ? 'default' : 'ghost'}
             size="sm"
             className={`rounded-full text-xs capitalize ${feedFilter === f ? '' : 'text-muted-foreground'}`}
-            onClick={() => setFeedFilter(f)}
+            onClick={() => {
+              setFeedFilter(f);
+              setSearch('');
+              setActiveTopic('');
+            }}
           >
             {f === 'trending' && <TrendingUp className="w-3 h-3 mr-1" />}
             {f}
