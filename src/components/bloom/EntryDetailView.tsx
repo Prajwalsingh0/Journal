@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Clock, Music, AlertTriangle, Send, Heart } from 'lucide-react';
+import { ArrowLeft, Clock, Music, AlertTriangle, Send, Heart, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -30,6 +30,7 @@ export default function EntryDetailView() {
   const [showCWRevealed, setShowCWRevealed] = useState(false);
   const [userReactions, setUserReactions] = useState<Record<string, boolean>>({});
   const [postingComment, setPostingComment] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const entry = feedEntries.find(e => e.id === selectedEntryId);
 
@@ -57,6 +58,7 @@ export default function EntryDetailView() {
 
   const mood = MOODS.find(m => m.id === entry.mood);
   const fontClass = entry.fontStyle === 'handwriting' ? 'font-handwriting text-lg' : entry.fontStyle === 'serif' ? 'font-journal-serif' : '';
+  const isAuthor = currentUser && ((entry as any).authorId === currentUser.id || entry.author.id === currentUser.id);
 
   const handleReaction = async (type: string) => {
     if (!currentUser) return;
@@ -100,6 +102,27 @@ export default function EntryDetailView() {
     setShowReportModal(true);
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this journal entry?')) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/entries?id=${entry.id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        toast.success('Entry deleted successfully 💜');
+        setFeedEntries(feedEntries.filter(e => e.id !== entry.id));
+        setCurrentView('feed');
+      } else {
+        toast.error('Failed to delete entry');
+      }
+    } catch {
+      toast.error('Error deleting entry');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-4 md:py-6">
       {/* Header */}
@@ -107,9 +130,15 @@ export default function EntryDetailView() {
         <Button variant="ghost" size="sm" className="rounded-full gap-1" onClick={() => setCurrentView('feed')}>
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
-        <Button variant="ghost" size="sm" className="rounded-full text-destructive/70 text-xs" onClick={handleReport}>
-          Report
-        </Button>
+        {isAuthor ? (
+          <Button variant="ghost" size="sm" className="rounded-full text-destructive hover:bg-destructive/10 text-xs font-semibold gap-1" onClick={handleDelete} disabled={deleting}>
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </Button>
+        ) : (
+          <Button variant="ghost" size="sm" className="rounded-full text-destructive/70 text-xs" onClick={handleReport}>
+            Report
+          </Button>
+        )}
       </div>
 
       {/* Content warning overlay */}
@@ -228,9 +257,21 @@ export default function EntryDetailView() {
                           {(c.author?.displayName || c.author?.name || '?')[0].toUpperCase()}
                         </div>
                         <div className="flex-1 bg-muted/50 rounded-xl px-3 py-2">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="text-xs font-medium">{c.author?.displayName || c.author?.name}</span>
-                            <span className="text-[10px] text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium">{c.author?.displayName || c.author?.name}</span>
+                              <span className="text-[10px] text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <button 
+                              onClick={() => {
+                                const username = c.author?.displayName || c.author?.name;
+                                setNewComment(`@${username} `);
+                                document.getElementById('comment-input')?.focus();
+                              }}
+                              className="text-[10px] text-primary/70 hover:text-primary hover:underline font-semibold transition-colors"
+                            >
+                              Reply
+                            </button>
                           </div>
                           <p className="text-sm">{c.content}</p>
                         </div>
@@ -243,6 +284,7 @@ export default function EntryDetailView() {
                     <p className="text-xs text-muted-foreground mb-2 italic">{kindnessPrompt}</p>
                     <div className="flex gap-2">
                       <Input
+                        id="comment-input"
                         placeholder="Write a supportive comment..."
                         value={newComment}
                         onChange={e => setNewComment(e.target.value)}

@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
         isDraft: e.isDraft,
         scheduledAt: e.scheduledAt,
         createdAt: e.createdAt.toISOString(),
+        authorId: e.authorId,
         author: e.isAnonymous
           ? { id: 'anon', name: 'Anonymous', displayName: 'Anonymous Bloomer', pronouns: 'prefer not to say', avatarUrl: null, isAnonymous: true }
           : e.author,
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
       isDraft: entry.isDraft,
       scheduledAt: entry.scheduledAt,
       createdAt: entry.createdAt.toISOString(),
+      authorId: entry.authorId,
       author: entry.isAnonymous
         ? { id: 'anon', name: 'Anonymous', displayName: 'Anonymous Bloomer', pronouns: 'prefer not to say', avatarUrl: null, isAnonymous: true }
         : entry.author,
