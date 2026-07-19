@@ -187,7 +187,7 @@ export default function WriteView() {
           <Music className="w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="What are you listening to? (optional)"
+            placeholder="What are you listening to? (optional — paste a Spotify or YouTube link to embed actual music!)"
             value={draftMusicMood}
             onChange={e => setDraftField('draftMusicMood', e.target.value)}
             className="flex-1 bg-transparent border-none outline-none text-xs text-muted-foreground placeholder:text-muted-foreground/40"

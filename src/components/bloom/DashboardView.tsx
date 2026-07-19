@@ -64,7 +64,7 @@ export default function DashboardView() {
     const fetchAll = async () => {
       try {
         // Fetch published entries for this user
-        const res = await fetch(`/api/entries?authorId=${currentUser.id}`);
+        const res = await fetch(`/api/entries?authorId=${currentUser.id}&requesterId=${currentUser.id}`);
         if (res.ok) {
           const data = await res.json();
           setAllUserEntries(data);

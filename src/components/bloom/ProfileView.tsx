@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStore, INTEREST_OPTIONS, type JournalEntryData } from '@/stores/store';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,8 +22,20 @@ export default function ProfileView() {
   const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
   const [bio, setBio] = useState(currentUser?.bio || '');
   const [interests, setInterests] = useState<string[]>(currentUser?.interests || []);
+  const [entries, setEntries] = useState<JournalEntryData[]>([]);
 
-  const entries = useMemo(() => feedEntries.filter(e => e.author.id === currentUser?.id), [feedEntries, currentUser?.id]);
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchProfileEntries = async () => {
+      try {
+        const res = await fetch(`/api/entries?authorId=${currentUser.id}&requesterId=${currentUser.id}`);
+        if (res.ok) {
+          setEntries(await res.json());
+        }
+      } catch {}
+    };
+    fetchProfileEntries();
+  }, [currentUser?.id, feedEntries]);
 
   const toggleInterest = (i: string) => {
     setInterests(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i].slice(0, 8));

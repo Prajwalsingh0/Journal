@@ -32,7 +32,29 @@ export default function EntryDetailView() {
   const [postingComment, setPostingComment] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const entry = feedEntries.find(e => e.id === selectedEntryId);
+  const [entry, setEntry] = useState<JournalEntryData | null>(null);
+  const [loadingEntry, setLoadingEntry] = useState(true);
+
+  useEffect(() => {
+    if (!selectedEntryId) return;
+    const fetchEntry = async () => {
+      setLoadingEntry(true);
+      const local = feedEntries.find(e => e.id === selectedEntryId);
+      if (local) {
+        setEntry(local);
+        setLoadingEntry(false);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/entries?id=${selectedEntryId}&requesterId=${currentUser?.id || ''}`);
+        if (res.ok) {
+          setEntry(await res.json());
+        }
+      } catch {}
+      setLoadingEntry(false);
+    };
+    fetchEntry();
+  }, [selectedEntryId, feedEntries, currentUser?.id]);
 
   useEffect(() => {
     if (selectedEntryId) fetchComments();
@@ -45,6 +67,14 @@ export default function EntryDetailView() {
       if (res.ok) setComments(await res.json());
     } catch {}
   };
+
+  if (loadingEntry) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-8 text-center animate-pulse">
+        <p className="text-sm text-muted-foreground">Loading entry...</p>
+      </div>
+    );
+  }
 
   if (!entry) {
     return (
@@ -187,11 +217,16 @@ export default function EntryDetailView() {
                   {mood.icon} {mood.label}
                 </Badge>
               )}
-              {entry.musicMood && (
-                <Badge variant="secondary" className="rounded-full gap-1">
-                  <Music className="w-3 h-3" /> {entry.musicMood}
-                </Badge>
-              )}
+              {entry.musicMood && (() => {
+                const parts = entry.musicMood.split('|');
+                const displayTitle = parts[0];
+                return (
+                  <Badge variant="secondary" className="rounded-full gap-1">
+                    <Music className="w-3 h-3" />
+                    {displayTitle.includes('spotify.com') || displayTitle.includes('youtube.com') || displayTitle.includes('youtu.be') ? 'Embedded Track 🎵' : displayTitle}
+                  </Badge>
+                );
+              })()}
               {entry.isAnonymous && (
                 <Badge variant="secondary" className="rounded-full">🎭 Anonymous</Badge>
               )}
@@ -204,6 +239,62 @@ export default function EntryDetailView() {
             <div className={`text-sm leading-relaxed whitespace-pre-line text-foreground/90 ${fontClass}`}>
               {entry.content}
             </div>
+
+            {/* Music Embed */}
+            {(() => {
+              const parts = (entry.musicMood || '').split('|');
+              const url = parts.length > 1 ? parts[1] : parts[0];
+              
+              const spotifyTrackMatch = url.match(/(?:https?:\/\/)?open\.spotify\.com\/track\/([a-zA-Z0-9]+)/);
+              if (spotifyTrackMatch) {
+                return (
+                  <div className="mt-4 rounded-xl overflow-hidden border border-border bg-card shadow-sm">
+                    <iframe
+                      src={`https://open.spotify.com/embed/track/${spotifyTrackMatch[1]}`}
+                      width="100%"
+                      height="80"
+                      frameBorder="0"
+                      allowFullScreen
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                    />
+                  </div>
+                );
+              }
+              const spotifyPlaylistMatch = url.match(/(?:https?:\/\/)?open\.spotify\.com\/(playlist|album)\/([a-zA-Z0-9]+)/);
+              if (spotifyPlaylistMatch) {
+                return (
+                  <div className="mt-4 rounded-xl overflow-hidden border border-border bg-card shadow-sm">
+                    <iframe
+                      src={`https://open.spotify.com/embed/${spotifyPlaylistMatch[1]}/${spotifyPlaylistMatch[2]}`}
+                      width="100%"
+                      height="152"
+                      frameBorder="0"
+                      allowFullScreen
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                    />
+                  </div>
+                );
+              }
+              const youtubeMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+              if (youtubeMatch) {
+                return (
+                  <div className="mt-4 rounded-xl overflow-hidden border border-border bg-card shadow-sm">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${youtubeMatch[1]}`}
+                      width="100%"
+                      height="315"
+                      frameBorder="0"
+                      allowFullScreen
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      loading="lazy"
+                    />
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Tags */}
             {entry.tags.length > 0 && (

@@ -112,11 +112,15 @@ export default function EntryCard({ entry, index, onClick }: Props) {
                 <span>{mood.icon}</span> {mood.label}
               </Badge>
             )}
-            {entry.musicMood && (
-              <Badge variant="secondary" className="rounded-full text-xs gap-1">
-                🎵 {entry.musicMood}
-              </Badge>
-            )}
+            {entry.musicMood && (() => {
+              const parts = entry.musicMood.split('|');
+              const displayTitle = parts[0];
+              return (
+                <Badge variant="secondary" className="rounded-full text-xs gap-1">
+                  🎵 {displayTitle.includes('spotify.com') || displayTitle.includes('youtube.com') || displayTitle.includes('youtu.be') ? 'Embedded Track' : displayTitle}
+                </Badge>
+              );
+            })()}
           </div>
 
           {/* Title & Content */}
